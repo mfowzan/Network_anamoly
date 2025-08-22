@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual env
+venv/
+.env/
+.venv/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs & cache
+*.log
+*.sqlite3
+*.db
+*.pkl
+*.joblib
+*.sav
+
+# Data
+data/
+*.csv
+*.tsv
+*.xlsx
+
+# Secrets
+.env
+*.secret
+*.key
+
+# Testing
+*.pytest_cache/
+.mypy_cache/
+.pytest_cache/
+__snapshots__/
+.coverage
+htmlcov/

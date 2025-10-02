@@ -1,16 +1,7 @@
 import os
 import joblib
 import numpy as np
-from typing import List, Dict
-from .utils import df_to_features
-
-
-
-
-import joblib
 import pandas as pd
-import numpy as np
-import os
 
 MODEL_PATH = os.environ.get("MODEL_PATH", "models/isolation_forest.joblib")
 SCALER_PATH = os.environ.get("SCALER_PATH", "models/scaler.joblib")
@@ -32,5 +23,24 @@ class AnomalyModel:
         Xs = self.scaler.transform(df)
         preds = self.model.predict(Xs)
         scores = self.model.decision_function(Xs)
-        return pd.DataFrame({"prediction": preds, "score": scores})
 
+        # Feature importance via simple z-scores
+        z_scores = np.abs((Xs - Xs.mean(axis=0)) / (Xs.std(axis=0) + 1e-6))
+
+        results = []
+        for i in range(len(df)):
+            feature_importances = {
+                self.features[j]: float(z_scores[i][j])
+                for j in range(len(self.features))
+            }
+            top_features = sorted(
+                feature_importances.items(), key=lambda x: x[1], reverse=True
+            )[:3]
+
+            results.append({
+                "prediction": int(1 if preds[i] == 1 else 0),
+                "score": float(scores[i]),
+                "top_features": top_features
+            })
+
+        return pd.DataFrame(results)

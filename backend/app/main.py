@@ -1,5 +1,8 @@
+from fastapi.middleware.cors import CORSMiddleware
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import os
 from typing import List
@@ -9,6 +12,23 @@ from pydantic import BaseModel
 from .utils import FEATURE_COLS
 from .schemas import SingleFeatures, BulkFeatures
 from .model import AnomalyModel
+
+app = FastAPI(title="Network Anomaly Detection API")
+
+# ✅ Add CORS
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # allow everything for now (safer during dev)
+    allow_credentials=True,
+    allow_methods=["*"],   # allow all HTTP methods
+    allow_headers=["*"],   # allow all headers
+)
+
 
 # Paths
 BASE_DIR = os.path.dirname(__file__)
@@ -20,8 +40,7 @@ FEATURES_PATH = os.path.join(MODEL_DIR, "features.joblib")
 # Load model once at startup
 anomaly_model = AnomalyModel(MODEL_PATH, SCALER_PATH, FEATURES_PATH)
 
-# FastAPI app
-app = FastAPI(title="Network Anomaly Detection API")
+
 
 # Schema for manual JSON input
 class InputRecord(BaseModel):
@@ -43,7 +62,7 @@ def predict_json(items: List[InputRecord]):
     """Predict on JSON array of multiple records"""
     df = pd.DataFrame([item.dict() for item in items])
     out = anomaly_model.predict_on_df(df)
-    return out.to_dict(orient="records")
+    return {"results": out.to_dict(orient="records")}
 
 
 @app.post("/predict_single")

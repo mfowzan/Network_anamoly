@@ -87,7 +87,7 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8001/predict", {
+      const response = await fetch("http://127.0.0.1:8000/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify([formData]),
@@ -101,12 +101,17 @@ function App() {
       const prediction = data.results[0].prediction;
       const score = data.results[0].score;
       const top_features = data.results[0].top_features || [];
+      const explanation_method = data.results[0].explanation_method || "unknown";
+
+      console.log("Raw API Response:", data);
+
 
       setResult({
         prediction,
         score,
         insights: getInsights(formData, prediction),
         top_features,
+        explanation_method,
       });
     } catch (err) {
       console.error("Error:", err);
@@ -128,6 +133,16 @@ function App() {
       normal: (normalVal / maxVal) * 100,
     };
   });
+
+  // Prepare feature importance data for chart (top_features from backend)
+  const featureImportanceData = (result && result.top_features && result.top_features.length > 0)
+    ? result.top_features.map((item) => {
+        // item may be [feature, value] or object; handle defensively
+        const feature = Array.isArray(item) ? item[0] : item.feature;
+        const value = Array.isArray(item) ? Number(item[1]) : Number(item.value);
+        return { feature, impact: Number(value) };
+      })
+    : [];
 
   return (
     <div
@@ -206,17 +221,37 @@ function App() {
               {result.insights}
             </p>
 
-            {/* 🔍 Explainability Section */}
+            {/* 🔍 Explainability Section (text + chart) */}
             {result.top_features && result.top_features.length > 0 && (
               <div style={{ marginTop: "15px" }}>
-                <h4>🔍 Key Factors Influencing This Prediction:</h4>
+                <h4>🔍 Key Factors Influencing This Prediction (method: {result.explanation_method || 'n/a'}):</h4>
+
+                {/* Text List */}
                 <ul>
                   {result.top_features.map(([feature, value], idx) => (
                     <li key={idx}>
-                      <strong>{feature}</strong> (impact: {value.toFixed(2)})
+                      <strong>{feature}</strong> (impact: {Number(value).toFixed(3)})
                     </li>
                   ))}
                 </ul>
+
+                {/* Feature Importance Chart (horizontal bars) */}
+                <div style={{ marginTop: "12px", minHeight: 220 }}>
+                  <h5 style={{ marginBottom: 8 }}>📊 Feature Importance (top contributors)</h5>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart
+                      data={featureImportanceData}
+                      layout="vertical"
+                      margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="feature" type="category" width={120} />
+                      <Tooltip formatter={(value) => Number(value).toFixed(3)} />
+                      <Bar dataKey="impact" fill="#ff7f0e" name="Impact" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             )}
           </div>
@@ -233,16 +268,8 @@ function App() {
               <YAxis domain={[0, 100]} />
               <Tooltip />
               <Legend />
-              <Bar
-                dataKey="user"
-                fill="#007BFF"
-                name="User Input (normalized)"
-              />
-              <Bar
-                dataKey="normal"
-                fill="#28a745"
-                name="Normal Traffic (normalized)"
-              />
+              <Bar dataKey="user" fill="#007BFF" name="User Input (normalized)" />
+              <Bar dataKey="normal" fill="#28a745" name="Normal Traffic (normalized)" />
             </BarChart>
           </ResponsiveContainer>
         </div>

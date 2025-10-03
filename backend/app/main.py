@@ -2,7 +2,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import os
 from typing import List
@@ -15,20 +14,14 @@ from .model import AnomalyModel
 
 app = FastAPI(title="Network Anomaly Detection API")
 
-# ✅ Add CORS
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-
+# ✅ Add CORS (development: allow everything; restrict for production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # allow everything for now (safer during dev)
+    allow_origins=["*"],   # during dev allow all (replace with specific origins for production)
     allow_credentials=True,
-    allow_methods=["*"],   # allow all HTTP methods
-    allow_headers=["*"],   # allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-
 
 # Paths
 BASE_DIR = os.path.dirname(__file__)
@@ -41,7 +34,6 @@ FEATURES_PATH = os.path.join(MODEL_DIR, "features.joblib")
 anomaly_model = AnomalyModel(MODEL_PATH, SCALER_PATH, FEATURES_PATH)
 
 
-
 # Schema for manual JSON input
 class InputRecord(BaseModel):
     duration: float = 0
@@ -52,6 +44,8 @@ class InputRecord(BaseModel):
     wrong_fragment: float = 0
 
 
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -59,6 +53,10 @@ async def health():
 
 @app.post("/predict")
 def predict_json(items: List[InputRecord]):
+    print("🔍 predict_json called with anomaly_model:", anomaly_model)
+    print("🔍 anomaly_model class:", anomaly_model.__class__)
+    print("🔍 anomaly_model module:", anomaly_model.__module__)
+
     """Predict on JSON array of multiple records"""
     df = pd.DataFrame([item.dict() for item in items])
     out = anomaly_model.predict_on_df(df)

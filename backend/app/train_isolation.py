@@ -1,9 +1,10 @@
 """
-Train and save an IsolationForest model and scaler.
+Train and save an IsolationForest model and scaler using KDD dataset.
 
-Run as module from project root:
-  python -m backend.app.train --data data/sample_flows.csv --out-dir models --contamination 0.05
+Usage:
+  python train_isolation.py --data data/kddcup.csv --out-dir backend/app/models/isolation --contamination 0.05
 """
+
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -13,7 +14,7 @@ import argparse
 import os
 
 def load_and_preprocess(data_path: str):
-    # Load raw dataset (no headers in KDD dataset)
+    # Column names for KDD Cup dataset
     col_names = [
         "duration","protocol_type","service","flag","src_bytes","dst_bytes",
         "land","wrong_fragment","urgent","hot","num_failed_logins",
@@ -28,19 +29,23 @@ def load_and_preprocess(data_path: str):
         "dst_host_srv_rerror_rate","label"
     ]
 
+    # Load dataset
     df = pd.read_csv(data_path, names=col_names)
 
-    # Drop categorical cols for now (simple version)
-    df = df.drop(columns=["protocol_type","service","flag","label"])
+    # Drop categorical + label columns
+    df = df.drop(columns=["protocol_type", "service", "flag", "label"], errors="ignore")
 
-    # Fill missing with 0
+    # Replace NaN with 0
     df = df.fillna(0)
 
     return df
 
-def train_model(data_path: str, out_dir: str, contamination: float = 0.05):
-    # Load dataset
+def train_isolation_forest(data_path: str, out_dir: str, contamination: float = 0.05):
+    print(f"📂 Loading KDD dataset from: {data_path}")
     df = load_and_preprocess(data_path)
+
+    feature_names = df.columns.tolist()
+    print(f"✅ Preprocessed dataset with {len(df)} rows and {len(feature_names)} numeric features")
 
     # Scale numeric features
     scaler = StandardScaler()
@@ -50,24 +55,23 @@ def train_model(data_path: str, out_dir: str, contamination: float = 0.05):
     model = IsolationForest(contamination=contamination, random_state=42)
     model.fit(X_scaled)
 
-    # Save model + scaler
+    # Save model artifacts
     os.makedirs(out_dir, exist_ok=True)
     joblib.dump(model, os.path.join(out_dir, "isolation_forest.joblib"))
     joblib.dump(scaler, os.path.join(out_dir, "scaler.joblib"))
-
-    feature_names = df.columns.tolist()
     joblib.dump(feature_names, os.path.join(out_dir, "features.joblib"))
-    print(f"✅ Features saved to: {os.path.join(out_dir, 'features.joblib')}")
 
-    print(f"✅ Trained model saved to: {os.path.join(out_dir, 'isolation_forest.joblib')}")
-    print(f"✅ Scaler saved to: {os.path.join(out_dir, 'scaler.joblib')}")
-    print(f"Total samples: {len(df)}")
+    print(f"✅ Trained IsolationForest saved to {out_dir}")
+    print(f"   - isolation_forest.joblib")
+    print(f"   - scaler.joblib")
+    print(f"   - features.joblib")
+    print(f"Total samples trained on: {len(df)}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data", type=str, required=True)
-    parser.add_argument("--out-dir", type=str, default="models")
-    parser.add_argument("--contamination", type=float, default=0.05)
+    parser.add_argument("--data", type=str, required=True, help="Path to KDD dataset CSV (e.g., data/kddcup.csv)")
+    parser.add_argument("--out-dir", type=str, required=True, help="Directory to save model files")
+    parser.add_argument("--contamination", type=float, default=0.05, help="Contamination rate (outlier proportion)")
     args = parser.parse_args()
 
-    train_model(args.data, args.out_dir, args.contamination)
+    train_isolation_forest(args.data, args.out_dir, args.contamination)

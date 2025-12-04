@@ -6,6 +6,11 @@ from typing import List
 from .schemas import SingleFeatures
 from .model import AnomalyModel
 
+from fastapi import UploadFile, File
+from .pcap_parser import extract_flows_from_pcap
+
+import tempfile
+
 app = FastAPI(title="Network Anomaly Detection API")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
@@ -112,3 +117,64 @@ async def predict_single(payload: SingleFeatures):
     anomaly_count = sum(1 for r in results.values() if r.get("prediction") == "anomaly")
     insight = "Normal behavior" if anomaly_count == 0 else f"{anomaly_count} models flagged anomaly"
     return {"results": results, "summary": {"anomaly_models": int(anomaly_count), "insight": insight}}
+
+
+
+
+@app.post("/upload_pcap")
+async def upload_pcap(file: UploadFile = File(...)):
+    try:
+        # Use OS-safe temp directory
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, file.filename)
+
+        # Save file
+        with open(temp_path, "wb") as f:
+            f.write(await file.read())
+
+        print("Saved PCAP to:", temp_path)
+
+        # Extract flows from pcap
+        df = extract_flows_from_pcap(temp_path)
+
+        if df.empty:
+            return {"error": "No valid traffic flows were found in the PCAP file."}
+
+        results_list = []
+
+        for idx, row in df.iterrows():
+            row_df = pd.DataFrame([row])
+
+            result = {}
+            for name, model in loaded.items():
+
+            # Ensemble model has a different method
+                if hasattr(model, "predict_on_df"):
+                    out = model.predict_on_df(row_df)       # base models
+                    pred = out["prediction"].iloc[0]
+                    score = float(out["score"].iloc[0])
+                else:
+                    out = model.predict(row_df)             # ensemble model
+                    pred = out["prediction"]
+                    score = float(out["score"])
+
+                result[name] = {
+                    "prediction": pred,
+                    "score": score
+                }
+
+            results_list.append({
+                "flow_id": idx,
+                "features": row.to_dict(),
+                "predictions": result
+            })
+
+
+        return {
+            "flow_count": len(df),
+            "analysis": results_list
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+

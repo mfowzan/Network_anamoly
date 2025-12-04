@@ -233,3 +233,53 @@ def load_model_from_dir(model_dir: str, model_type: str):
         model_type=normalized_type,
         metadata_path=metadata_path if os.path.exists(metadata_path) else None
     )
+
+
+class EnsembleModel:
+    """Hybrid Ensemble with (50% static accuracy weight + 50% dynamic confidence score)"""
+
+    def __init__(self, model_dict, weight_path):
+        """
+        Args:
+            model_dict: dict of {name: AnomalyModel instance}
+            weight_path: joblib file containing accuracies + weights
+        """
+        self.models = model_dict
+        self.weights = joblib.load(weight_path)
+        self.model_weights = self.weights["weights"]
+        print(f"✅ Loaded EnsembleModel with weights: {self.model_weights}")
+
+    def predict(self, df):
+        """
+        Returns weighted anomaly score + label
+        """
+        total_weight = 0
+        total_score = 0
+
+        for name, model in self.models.items():
+
+            out = model.predict_on_df(df)
+            pred = out["prediction"].iloc[0]      # "normal" or "anomaly"
+            score = out["score"].iloc[0]          # 0–1 (normality score)
+
+            static_weight = self.model_weights.get(name, 0)
+            dynamic_weight = score                 # higher score → more normal
+
+            hybrid_weight = (static_weight + dynamic_weight) / 2
+
+            # Convert pred to anomaly probability (1 = anomaly)
+            anomaly_prob = 1 - score
+
+            total_weight += hybrid_weight
+            total_score += hybrid_weight * anomaly_prob
+
+        final_score = total_score / total_weight
+        final_pred = "anomaly" if final_score > 0.5 else "normal"
+
+        return {
+            "prediction": final_pred,
+            "score": float(1 - final_score),  # return normality score
+            "details": {
+                "hybrid_scores": self.weights
+            }
+        }

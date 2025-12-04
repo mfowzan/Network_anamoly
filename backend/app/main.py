@@ -50,15 +50,44 @@ MODELS = {
         "metadata": os.path.join(MODEL_DIR, "xgboost", "metadata.joblib"),
         "type": "xgboost"
     },
+    "ensemble": {
+    "model": os.path.join(MODEL_DIR, "ensemble", "ensemble_weights.joblib"),
+    "type": "ensemble"
+},
 }
 
 loaded = {}
+
+# First load all base models
+base_models = {}
+
 for name, cfg in MODELS.items():
+    if name == "ensemble":
+        continue  # skip ensemble for now
+
     try:
-        loaded[name] = AnomalyModel(cfg["model"], cfg["scaler"], cfg["features"], model_type=cfg["type"], metadata_path=cfg["metadata"])
+        model = AnomalyModel(
+            cfg["model"], 
+            cfg.get("scaler"), 
+            cfg.get("features"), 
+            model_type=cfg["type"], 
+            metadata_path=cfg.get("metadata")
+        )
+        base_models[name] = model
+        loaded[name] = model
         print("✅ Loaded", name)
     except Exception as e:
         print("⚠️ Could not load", name, e)
+
+# Now load ensemble
+from .model import EnsembleModel
+try:
+    ensemble_path = MODELS["ensemble"]["model"]
+    loaded["ensemble"] = EnsembleModel(base_models, ensemble_path)
+    print("✅ Loaded ensemble model")
+except Exception as e:
+    print("⚠️ Could not load ensemble:", e)
+
 
 @app.get("/health")
 async def health():
@@ -76,6 +105,9 @@ async def predict_single(payload: SingleFeatures):
             results[name] = {"prediction": pred, "score": score}
         except Exception as e:
             results[name] = {"error": str(e)}
+    if "ensemble" in loaded:
+        ens = loaded["ensemble"].predict(df)
+        results["ensemble"] = ens
     # summary
     anomaly_count = sum(1 for r in results.values() if r.get("prediction") == "anomaly")
     insight = "Normal behavior" if anomaly_count == 0 else f"{anomaly_count} models flagged anomaly"

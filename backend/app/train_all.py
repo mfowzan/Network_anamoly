@@ -249,6 +249,64 @@ xgb_out = os.path.join(OUT_DIR, "xgboost")
 save_model(xgb_out, xgb, xgb_scaler, FEATURES, metadata, "xgboost.joblib")
 print(f"✅ Saved to {xgb_out}")
 
+
+
+# ==================== 6. ENSEMBLE WEIGHTS ====================
+print("\n" + "="*60)
+print("🔹 6/6 COMPUTING ENSEMBLE WEIGHTS (Hybrid)")
+print("="*60)
+
+from sklearn.metrics import accuracy_score
+ensemble_dir = os.path.join(OUT_DIR, "ensemble")
+os.makedirs(ensemble_dir, exist_ok=True)
+
+# Step 1: get validation predictions from each model
+val_preds = {}
+
+# Autoencoder predictions
+recon = autoencoder.predict(X_val_scaled, verbose=0)
+mse = np.mean(np.power(X_val_scaled - recon, 2), axis=1)
+threshold = np.percentile(mse, 95)
+val_preds["autoencoder"] = (mse > threshold).astype(int)
+
+# Isolation forest
+iso_raw = iso.predict(X_val_iso)
+val_preds["isolation"] = (iso_raw == -1).astype(int)
+
+# OCSVM
+ocsvm_raw = ocsvm.predict(X_val_ocsvm)
+val_preds["ocsvm"] = (ocsvm_raw == -1).astype(int)
+
+# Random Forest
+val_preds["rf"] = rf.predict(X_val_rf)
+
+# XGBoost
+val_preds["xgboost"] = xgb.predict(X_val_xgb)
+
+# Step 2: compute accuracies
+accuracies = {}
+for name, pred in val_preds.items():
+    acc = accuracy_score(y_val, pred)
+    accuracies[name] = acc
+    print(f"   {name}: accuracy={acc:.4f}")
+
+# Step 3: normalize accuracies into weights
+acc_values = np.array(list(accuracies.values()))
+weights = acc_values / acc_values.sum()
+
+ensemble_weights = {
+    "model_names": list(accuracies.keys()),
+    "accuracies": accuracies,
+    "weights": {name: float(w) for name, w in zip(accuracies.keys(), weights)}
+}
+
+# Save weights
+joblib.dump(ensemble_weights, os.path.join(ensemble_dir, "ensemble_weights.joblib"))
+print(f"✅ Ensemble weights saved to {ensemble_dir}")
+print(f"Weights: {ensemble_weights['weights']}")
+
+
+
 # ==================== SUMMARY ====================
 print("\n" + "="*60)
 print("🎯 ALL MODELS TRAINED & SAVED SUCCESSFULLY")

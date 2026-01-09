@@ -1,3 +1,4 @@
+// App.js
 import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import "./App.css";
@@ -15,12 +16,14 @@ import {
   PolarRadiusAxis,
   Radar,
 } from "recharts";
-import { Shield, AlertTriangle, Activity, TrendingUp, Zap, Server } from "lucide-react";
+import { Shield, AlertTriangle, Activity, TrendingUp, Zap, Server, Info } from "lucide-react";
 
 import PCAPUpload from "./PCAPUpload";
+import RealTimeMonitor from "./RealTimeMonitor";
+import ChatBotPage from "./ChatBotPage";
+import ExplainPage from "./ExplainPage";
 
 function SingleFlowPage() {
-  // --- ORIGINAL STATES ---
   const [formData, setFormData] = useState({
     duration: "",
     src_bytes: "",
@@ -44,7 +47,6 @@ function SingleFlowPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // -------------------------
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -137,7 +139,6 @@ function SingleFlowPage() {
     setLoading(false);
   };
 
-  // ---------------------------------------
   const renderComparisonChart = (results) => {
     const chartData = Object.keys(results).map((key) => ({
       model: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
@@ -145,13 +146,32 @@ function SingleFlowPage() {
     }));
 
     return (
-      <ResponsiveContainer width="100%" height={320}>
+      <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-          <XAxis dataKey="model" angle={-45} textAnchor="end" height={70} tick={{ fill: "#9ca3af" }} />
-          <YAxis tick={{ fill: "#9ca3af" }} domain={[0, 100]} />
-          <Tooltip />
-          <Bar dataKey="score" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+          <defs>
+            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#a855f7" stopOpacity={1} />
+              <stop offset="100%" stopColor="#ec4899" stopOpacity={0.8} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+          <XAxis 
+            dataKey="model" 
+            angle={-20} 
+            textAnchor="end" 
+            height={80} 
+            tick={{ fill: "#94a3b8", fontSize: 12 }} 
+          />
+          <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} domain={[0, 100]} />
+          <Tooltip 
+            contentStyle={{ 
+              background: 'rgba(15, 23, 42, 0.95)', 
+              border: '1px solid #475569',
+              borderRadius: '8px',
+              color: '#e2e8f0'
+            }} 
+          />
+          <Bar dataKey="score" fill="url(#barGradient)" radius={[8, 8, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     );
@@ -166,10 +186,10 @@ function SingleFlowPage() {
     return (
       <ResponsiveContainer width="100%" height={300}>
         <RadarChart data={radarData}>
-          <PolarGrid stroke="#374151" />
-          <PolarAngleAxis dataKey="model" tick={{ fill: "#9ca3af", fontSize: 11 }} />
-          <PolarRadiusAxis tick={{ fill: "#9ca3af" }} domain={[0, 100]} />
-          <Radar dataKey="score" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
+          <PolarGrid stroke="#334155" />
+          <PolarAngleAxis dataKey="model" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+          <PolarRadiusAxis tick={{ fill: "#94a3b8" }} domain={[0, 100]} />
+          <Radar dataKey="score" stroke="#a855f7" fill="#a855f7" fillOpacity={0.5} />
         </RadarChart>
       </ResponsiveContainer>
     );
@@ -188,218 +208,229 @@ function SingleFlowPage() {
     ],
   };
 
-  // ----------------- RETURN FULL ORIGINAL UI -----------------
   return (
-    <div className="content-wrapper">
-
+    <div className="dashboard-container">
       <div className="background-effects">
         <div className="blob blob-1"></div>
         <div className="blob blob-2"></div>
         <div className="blob blob-3"></div>
       </div>
 
-      <header className="dashboard-header">
-        <div className="header-content">
-          <Shield className="header-icon" size={48} />
-          <h1 className="main-title">Network Anomaly Detection</h1>
+      <div className="content-wrapper">
+        <header className="dashboard-header">
+          <div className="header-content">
+            <Shield className="header-icon" size={48} />
+            <h1 className="main-title">Network Anomaly Detection</h1>
+          </div>
+          <p className="subtitle">AI-Powered Security Analysis Dashboard</p>
+        </header>
+
+        <nav className="top-nav">
+          <Link to="/" className="nav-link nav-active">Single Flow Analysis</Link>
+          <Link to="/pcap" className="nav-link">PCAP Upload</Link>
+          <Link to="/realtime" className="nav-link">Real-Time Monitor</Link>
+          <Link to="/chatbot" className="nav-btn">
+            <Zap size={16} />
+            Cyber AI Chatbot
+          </Link>
+          <Link to="/explain" className="nav-link">Explain</Link>
+        </nav>
+
+        <div className="preset-buttons">
+          <button onClick={() => handlePreset("normal")} className="preset-btn preset-normal">
+            <Shield size={18} />
+            Normal Traffic
+          </button>
+          <button onClick={() => handlePreset("suspicious")} className="preset-btn preset-suspicious">
+            <AlertTriangle size={18} />
+            Suspicious Traffic
+          </button>
+          <button onClick={() => handlePreset("anomalous")} className="preset-btn preset-anomalous">
+            <Zap size={18} />
+            Anomalous Traffic
+          </button>
         </div>
-        <p className="subtitle">AI-Powered Security Analysis Dashboard</p>
-      </header>
 
-      {/* Navigation */}
-      <nav className="top-nav">
-        <Link to="/" className="nav-link nav-active">Single Flow Analysis</Link>
-        <Link to="/pcap" className="nav-link">PCAP Upload</Link>
-      </nav>
+        <div className="main-grid">
+          <div className="input-section">
+            <div className="card">
+              <div className="card-header">
+                <Activity size={24} className="section-icon" />
+                <h2>Traffic Parameters</h2>
+              </div>
 
-      {/* PRESET BUTTONS */}
-      <div className="preset-buttons">
-        <button onClick={() => handlePreset("normal")} className="preset-btn preset-normal">
-          <Shield size={20} />
-          Normal Traffic
-        </button>
-        <button onClick={() => handlePreset("suspicious")} className="preset-btn preset-suspicious">
-          <AlertTriangle size={20} />
-          Suspicious Traffic
-        </button>
-        <button onClick={() => handlePreset("anomalous")} className="preset-btn preset-anomalous">
-          <Zap size={20} />
-          Anomalous Traffic
-        </button>
-      </div>
+              <div className="form-container">
+                {Object.entries(fieldGroups).map(([groupName, fields]) => (
+                  <div key={groupName} className="field-group">
+                    <h3 className="group-title">{groupName}</h3>
+                    {fields.map((field) => (
+                      <div key={field} className="input-field">
+                        <label>{field.replaceAll("_", " ")}</label>
+                        <input
+                          type="number"
+                          step="any"
+                          name={field}
+                          value={formData[field]}
+                          onChange={handleChange}
+                          required
+                          placeholder="Enter value"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ))}
 
-      <div className="main-grid">
-        
-        {/* INPUT SECTION */}
-        <div className="input-section">
-          <div className="card">
-            <div className="card-header">
-              <Activity size={24} className="section-icon" />
-              <h2>Traffic Parameters</h2>
-            </div>
-
-            <div className="form-container">
-              {Object.entries(fieldGroups).map(([groupName, fields]) => (
-                <div key={groupName} className="field-group">
-                  <h3 className="group-title">{groupName}</h3>
-                  {fields.map((field) => (
-                    <div key={field} className="input-field">
-                      <label>{field.replaceAll("_", " ")}</label>
-                      <input
-                        type="number"
-                        step="any"
-                        name={field}
-                        value={formData[field]}
-                        onChange={handleChange}
-                        required
-                        placeholder="Enter value"
-                      />
-                    </div>
-                  ))}
-                </div>
-              ))}
-
-              <button onClick={handleSubmit} disabled={loading} className="submit-btn">
-                {loading ? (
-                  <>
-                    <div className="spinner"></div>
-                    Analyzing Traffic...
-                  </>
-                ) : (
-                  <>
-                    <Server size={20} />
-                    Run Analysis
-                  </>
-                )}
-              </button>
+                <button onClick={handleSubmit} disabled={loading} className="submit-btn">
+                  {loading ? (
+                    <>
+                      <div className="spinner"></div>
+                      Analyzing Traffic...
+                    </>
+                  ) : (
+                    <>
+                      <Server size={20} />
+                      Run Analysis
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* RESULTS SECTION */}
-        <div className="results-section">
-
-          {loading && (
-            <div className="card loading-card">
-              <div className="loading-content">
-                <div className="loading-spinner-wrapper">
-                  <div className="loading-ring"></div>
-                  <Shield size={48} className="loading-icon" />
+          <div className="results-section">
+            {loading && (
+              <div className="card loading-card">
+                <div className="loading-content">
+                  <div className="loading-spinner-wrapper">
+                    <div className="loading-ring"></div>
+                    <Shield size={48} className="loading-icon" />
+                  </div>
+                  <p className="loading-title">Processing Models</p>
+                  <p className="loading-subtitle">Analyzing network traffic patterns...</p>
                 </div>
-                <p className="loading-title">Processing Models</p>
-                <p className="loading-subtitle">Analyzing network traffic patterns...</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {result && !loading && (
-            <>
-              <div className="summary-grid">
-                <div className="summary-card summary-card-purple">
-                  <div className="summary-content">
-                    <div>
-                      <p className="summary-label">Models Flagged</p>
-                      <p className="summary-value">{result.summary.anomaly_models}</p>
+            {result && !loading && (
+              <>
+                <div className="summary-grid">
+                  <div className="summary-card summary-card-purple">
+                    <div className="summary-content">
+                      <div>
+                        <p className="summary-label">Models Flagged</p>
+                        <p className="summary-value">{result.summary.anomaly_models}</p>
+                      </div>
+                      <AlertTriangle size={48} className="summary-icon" />
                     </div>
-                    <AlertTriangle size={48} className="summary-icon" />
+                  </div>
+
+                  <div className="summary-card summary-card-blue">
+                    <div className="summary-content">
+                      <div>
+                        <p className="summary-label">Confidence Level</p>
+                        <p className="summary-value">
+                          {result.summary.insight.includes("High confidence")
+                            ? "High"
+                            : result.summary.insight.includes("Moderate")
+                            ? "Medium"
+                            : "Low"}
+                        </p>
+                      </div>
+                      <TrendingUp size={48} className="summary-icon" />
+                    </div>
                   </div>
                 </div>
 
-                <div className="summary-card summary-card-blue">
-                  <div className="summary-content">
-                    <div>
-                      <p className="summary-label">Confidence Level</p>
-                      <p className="summary-value">
-                        {result.summary.insight.includes("High confidence")
-                          ? "High"
-                          : result.summary.insight.includes("Moderate")
-                          ? "Medium"
-                          : "Low"}
-                      </p>
-                    </div>
-                    <TrendingUp size={48} className="summary-icon" />
+                <div className="card">
+                  <div className="card-header">
+                    <Info size={24} className="section-icon" />
+                    <h3>Analysis Insights</h3>
+                  </div>
+                  <p className="insight-text">{result.summary.insight}</p>
+                </div>
+
+                <div className="charts-grid">
+                  <div className="card">
+                    <h3 className="chart-title">Model Comparison</h3>
+                    {renderComparisonChart(result.results)}
+                  </div>
+
+                  <div className="card">
+                    <h3 className="chart-title">Confidence Radar</h3>
+                    {renderRadarChart(result.results)}
                   </div>
                 </div>
-              </div>
-
-              <div className="card">
-                <div className="card-header">
-                  <Activity size={24} className="section-icon" />
-                  <h3>Analysis Insights</h3>
-                </div>
-                <p className="insight-text">{result.summary.insight}</p>
-              </div>
-
-              <div className="charts-grid">
-                <div className="card">
-                  <h3 className="chart-title">Model Comparison</h3>
-                  {renderComparisonChart(result.results)}
-                </div>
 
                 <div className="card">
-                  <h3 className="chart-title">Confidence Radar</h3>
-                  {renderRadarChart(result.results)}
-                </div>
-              </div>
+                  <div className="card-header">
+                    <Server size={24} className="section-icon" />
+                    <h3>Detailed Model Outputs</h3>
+                  </div>
 
-              <div className="card">
-                <div className="card-header">
-                  <Server size={24} className="section-icon" />
-                  <h3>Detailed Model Outputs</h3>
-                </div>
+                  <div className="models-grid">
+                    {Object.keys(result.results).map((modelName) => {
+                      const res = result.results[modelName];
+                      const isAnomaly = res.prediction === "anomaly";
+                      const isNormal = res.prediction === "normal";
 
-                <div className="models-grid">
-                  {Object.keys(result.results).map((modelName) => {
-                    const res = result.results[modelName];
-                    const isAnomaly = res.prediction === "anomaly";
-                    const isNormal = res.prediction === "normal";
+                      return (
+                        <div key={modelName} className={`model-card ${isAnomaly ? "model-anomaly" : "model-normal"}`}>
+                          <h4 className="model-name">{modelName.replaceAll("_", " ")}</h4>
 
-                    return (
-                      <div key={modelName} className={`model-card ${isAnomaly ? "model-anomaly" : "model-normal"}`}>
-                        <h4 className="model-name">{modelName.replaceAll("_", " ")}</h4>
+                          <div className="model-details">
+                            <div className="model-row">
+                              <span className="model-label">Status:</span>
+                              <span className="model-status">
+                                {isAnomaly ? <AlertTriangle size={16} /> : <Shield size={16} />}
+                                {isAnomaly ? "Anomaly" : isNormal ? "Normal" : "Unknown"}
+                              </span>
+                            </div>
 
-                        <div className="model-details">
-                          <div className="model-row">
-                            <span className="model-label">Status:</span>
-                            <span className="model-status">
-                              {isAnomaly ? <AlertTriangle size={16} /> : <Shield size={16} />}
-                              {isAnomaly ? "Anomaly" : isNormal ? "Normal" : "Unknown"}
-                            </span>
-                          </div>
+                            <div className="model-row">
+                              <span className="model-label">Confidence:</span>
+                              <span className="model-confidence">
+                                {res.score ? (res.score * 100).toFixed(1) + "%" : "N/A"}
+                              </span>
+                            </div>
 
-                          <div className="model-row">
-                            <span className="model-label">Confidence:</span>
-                            <span className="model-confidence">
-                              {res.score ? (res.score * 100).toFixed(1) + "%" : "N/A"}
-                            </span>
-                          </div>
-
-                          <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${(res.score || 0) * 100}%` }}></div>
+                            <div className="progress-bar">
+                              <div className="progress-fill" style={{ width: `${(res.score || 0) * 100}%` }}></div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
+
+                <button
+                  className="explain-btn"
+                  onClick={async () => {
+                    const res = await fetch("http://127.0.0.1:8000/explain_last");
+                    const data = await res.json();
+                    localStorage.setItem("xai_data", JSON.stringify(data));
+                    window.location.href = "/explain";
+                  }}
+                >
+                  🔍 Explain This Prediction
+                </button>
+              </>
+            )}
+
+            {error && !loading && (
+              <div className="card error-card">
+                <AlertTriangle size={24} />
+                <p>{error}</p>
               </div>
-            </>
-          )}
+            )}
 
-          {error && !loading && (
-            <div className="card error-card">
-              <AlertTriangle size={24} />
-              <p>{error}</p>
-            </div>
-          )}
-
-          {!result && !loading && !error && (
-            <div className="card empty-card">
-              <Shield size={64} className="empty-icon" />
-              <p>Enter traffic parameters and run analysis to view results</p>
-            </div>
-          )}
-
+            {!result && !loading && !error && (
+              <div className="card empty-card">
+                <Shield size={64} className="empty-icon" />
+                <p>Enter traffic parameters and run analysis to view results</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -412,6 +443,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<SingleFlowPage />} />
         <Route path="/pcap" element={<PCAPUpload />} />
+        <Route path="/realtime" element={<RealTimeMonitor />} />
+        <Route path="/chatbot" element={<ChatBotPage />} />
+        <Route path="/explain" element={<ExplainPage />} />
       </Routes>
     </Router>
   );
